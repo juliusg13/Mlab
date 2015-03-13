@@ -69,11 +69,18 @@ team_t team = {
 /* Given block ptr bp, compute address of next and previous blocks */
 #define NEXT_BLKP(bp)  ((char *)(bp) + GET_SIZE(((char *)(bp) - WSIZE)))
 #define PREV_BLKP(bp)  ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE)))
+
+#define ALIGN(size) (((size_t)(size) + 7) & ~0x7)
+
+#define PRE(p_block) ((void *)(p_block - DSIZE)) //Predecessor of BP
+#define SUC(p_block) ((void *)(p_block + DSIZE)) //pointer to successor of BP
+
 /* $end mallocmacros */
 
 /* Global variables */
 static char *heap_listp;  /* pointer to first block */  
-
+static char *mp_freelist;
+static int m_freecount;
 /* function prototypes for internal helper routines */
 static void *extend_heap(size_t words);
 static void place(void *bp, size_t asize);
@@ -96,6 +103,8 @@ int mm_init(void)
     PUT(heap_listp+DSIZE, PACK(OVERHEAD, 1));  /* prologue footer */ 
     PUT(heap_listp+WSIZE+DSIZE, PACK(0, 1));   /* epilogue header */
     heap_listp += DSIZE;
+    m_freelist = heap_listp;
+    freecount = 0;
 
     /* Extend the empty heap with a free block of CHUNKSIZE bytes */
     if (extend_heap(CHUNKSIZE/WSIZE) == NULL)
