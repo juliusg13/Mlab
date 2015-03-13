@@ -433,7 +433,7 @@ static void allocate_block(void * block_ptr)
 		return;
 	}
 	
-	void* block_prev_ptr = GET(PRE(block_ptr));
+	void* block_prev_ptr = PRE(block_ptr);
 	
 	if (SUC(block_ptr) == NULL)
 	{
@@ -443,7 +443,7 @@ static void allocate_block(void * block_ptr)
 		return;
 	}
 	
-	void* block_next_ptr = GET(SUC(block_ptr));
+	void* block_next_ptr = SUC(block_ptr);
 	PUT(SUC(block_prev_ptr), GET(block_next_ptr));
 	PUT(PRE(block_next_ptr), GET(block_prev_ptr));
 	PUT(SUC(block_ptr), (int)NULL);	
