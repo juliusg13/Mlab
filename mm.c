@@ -91,36 +91,36 @@ static void checkblock(void *bp);
 
 /* 
  * mm_init - Initialize the memory manager 
-ptr: f6a10008
-ptr: f6a10008
-ptr: f6a10008
-ptr: f6a10008
-ptr: f6a10010
-
+Init - Begin
+heap list 1: f6a10008
+Begin heap: f6a10008
+End heap: f6a10017
+heap list 2: f6a10010
+Begin heap: f6a10008
+End heap: f6a10017
+Init - End
  */
 /* $begin mminit */
 int mm_init(void) 
 {
     /* create the initial empty heap */
     if ((heap_listp = mem_sbrk(4*WSIZE)) == NULL) return -1;
-	printf("Init - Begin\n");
-	printf("heap list 1: %x\n", heap_listp);
-	printf("Begin heap: %x\n", mem_heap_lo());
-	printf("End heap: %x\n", mem_heap_hi());
+	printf("Begin heap 1: %x\n", mem_heap_lo());
+	printf("End heap 1: %x\n", mem_heap_hi());
     PUT(heap_listp, 0);                        /* alignment padding */
     PUT(heap_listp+WSIZE, PACK(OVERHEAD, 1));  /* prologue header */ 
     PUT(heap_listp+DSIZE, PACK(OVERHEAD, 1));  /* prologue footer */ 
     PUT(heap_listp+WSIZE+DSIZE, PACK(0, 1));   /* epilogue header */
     heap_listp += DSIZE;
 	printf("heap list 2: %x\n", heap_listp);
-	printf("Begin heap: %x\n", mem_heap_lo());
-	printf("End heap: %x\n", mem_heap_hi());
-	printf("Init - End\n");
+
     mp_freelist = heap_listp;
     m_freecount = 0;
 	
     /* Extend the empty heap with a free block of CHUNKSIZE bytes */
     if (extend_heap(CHUNKSIZE/WSIZE) == NULL) return -1;
+	printf("Begin heap 2: %x\n", mem_heap_lo());
+	printf("End heap 2: %x\n", mem_heap_hi());
     return 0;
 }
 /* $end mminit */
