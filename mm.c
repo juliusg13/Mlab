@@ -88,6 +88,8 @@ static void *find_fit(size_t asize);
 static void *coalesce(void *block_ptr);
 static void printblock(void *block_ptr); 
 static void checkblock(void *block_ptr);
+static void allocate_block(void * block_ptr);
+static void free_block(void * block_ptr);
 
 /* 
  * mm_init - Initialize the memory manager 
@@ -142,7 +144,8 @@ void *mm_malloc(size_t size)
 	}
     
     /* Search the free list for a fit */
-    if ((block_ptr = find_fit(asize)) != NULL) 
+	block_ptr = find_fit(asize);
+    if (block_ptr != NULL) 
 	{
         place(block_ptr, asize);
         return block_ptr;
@@ -150,7 +153,8 @@ void *mm_malloc(size_t size)
 
     /* No fit found. Get more memory and place the block */
     extendsize = MAX(asize,CHUNKSIZE);
-    if ((block_ptr = extend_heap(extendsize/WSIZE)) == NULL)
+	block_ptr = extend_heap(extendsize/WSIZE);
+    if (block_ptr == NULL)
 	{
         return NULL;
 	}
@@ -272,6 +276,8 @@ static void place(void *block_ptr, size_t asize)
 /* $end mmplace-proto */
 {
     size_t csize = GET_SIZE(HDRP(block_ptr));   
+	
+	allocate_block(block_ptr);
 
     if ((csize - asize) >= (DSIZE + OVERHEAD)) 
 	{ 
@@ -280,6 +286,7 @@ static void place(void *block_ptr, size_t asize)
         block_ptr = NEXT_BLKP(block_ptr);
         PUT(HDRP(block_ptr), PACK(csize-asize, 0));
         PUT(FTRP(block_ptr), PACK(csize-asize, 0));
+		free_block(block_ptr);
     }
     else 
 	{ 
@@ -294,11 +301,17 @@ static void place(void *block_ptr, size_t asize)
  */
 static void *find_fit(size_t asize)
 {
+	
+
     /* first fit search */
     void *block_ptr;
 
-    for (block_ptr = p_heap_list; GET_SIZE(HDRP(block_ptr)) > 0; block_ptr = NEXT_BLKP(block_ptr)) 
+    for (block_ptr = mp_firstfreeblock; m_freecount >= 0; block_ptr = SUC(block_ptr)) 
 	{
+		if (block_ptr == NULL)
+		{
+			return NULL;
+		}
         if (!GET_ALLOC(HDRP(block_ptr)) && (asize <= GET_SIZE(HDRP(block_ptr)))) 
 		{
             return block_ptr;
@@ -320,9 +333,11 @@ static void *coalesce(void *block_ptr)
 	{            
         return block_ptr;
     }
-
-    else if (prev_alloc && !next_alloc) 			 /* Case 2 */
+	
+    if (prev_alloc && !next_alloc) 			 /* Case 2 */
 	{
+		allocate_block(NEXT_BLKP(block_ptr));
+		
         size += GET_SIZE(HDRP(NEXT_BLKP(block_ptr)));
         PUT(HDRP(block_ptr), PACK(size, 0));
         PUT(FTRP(block_ptr), PACK(size,0));
@@ -330,6 +345,8 @@ static void *coalesce(void *block_ptr)
 
     else if (!prev_alloc && next_alloc)				 /* Case 3 */
 	{     
+		allocate_block(PREV_BLKP(block_ptr));
+		
         size += GET_SIZE(HDRP(PREV_BLKP(block_ptr)));
         PUT(FTRP(block_ptr), PACK(size, 0));
         PUT(HDRP(PREV_BLKP(block_ptr)), PACK(size, 0));
@@ -337,13 +354,18 @@ static void *coalesce(void *block_ptr)
     }
 
     else 											/* Case 4 */
-	{                                     
+	{   
+		allocate_block(NEXT_BLKP(block_ptr));
+		allocate_block(PREV_BLKP(block_ptr));
+		
         size += GET_SIZE(HDRP(PREV_BLKP(block_ptr))) + GET_SIZE(FTRP(NEXT_BLKP(block_ptr)));
         PUT(HDRP(PREV_BLKP(block_ptr)), PACK(size, 0));
         PUT(FTRP(NEXT_BLKP(block_ptr)), PACK(size, 0));
         block_ptr = PREV_BLKP(block_ptr);
     }
-
+	
+	free_block(block_ptr);
+	
     return block_ptr;
 }
 
