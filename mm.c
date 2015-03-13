@@ -260,9 +260,11 @@ static void *extend_heap(size_t words)
     PUT(HDRP(block_ptr), PACK(size, 0));         /* free block header */
     PUT(FTRP(block_ptr), PACK(size, 0));         /* free block footer */
     PUT(HDRP(NEXT_BLKP(block_ptr)), PACK(0, 1)); /* new epilogue header */
-
+    printblock(block_ptr);
+    printf("%d \n", size);
     /* Coalesce if the previous block was free */
     return coalesce(block_ptr);
+//	return block_ptr;
 }
 /* $end mmextendheap */
 
@@ -307,6 +309,7 @@ static void *find_fit(size_t asize)
     void *block_ptr;
 
     for (block_ptr = mp_firstfreeblock; m_freecount >= 0; block_ptr = SUC(block_ptr)) 
+// for (block_ptr = mp_firstfreeblock; GET_SIZE(HDRP(block_ptr)) > 0; block_ptr = SUC(block_ptr)) 
 	{
 		if (block_ptr == NULL)
 		{
@@ -330,12 +333,14 @@ static void *coalesce(void *block_ptr)
     size_t size = GET_SIZE(HDRP(block_ptr));
 
     if (prev_alloc && next_alloc) 					/* Case 1 */
-	{            
+	{
+	printf("case 1 \n");
         return block_ptr;
     }
 	
     if (prev_alloc && !next_alloc) 			 /* Case 2 */
 	{
+		printf("case 2 \n");
 		allocate_block(NEXT_BLKP(block_ptr));
 		
         size += GET_SIZE(HDRP(NEXT_BLKP(block_ptr)));
@@ -345,6 +350,7 @@ static void *coalesce(void *block_ptr)
 
     else if (!prev_alloc && next_alloc)				 /* Case 3 */
 	{     
+		printf("case 3 \n");
 		allocate_block(PREV_BLKP(block_ptr));
 		
         size += GET_SIZE(HDRP(PREV_BLKP(block_ptr)));
@@ -355,6 +361,7 @@ static void *coalesce(void *block_ptr)
 
     else 											/* Case 4 */
 	{   
+		printf("case 4 \n");
 		allocate_block(NEXT_BLKP(block_ptr));
 		allocate_block(PREV_BLKP(block_ptr));
 		
@@ -363,7 +370,7 @@ static void *coalesce(void *block_ptr)
         PUT(FTRP(NEXT_BLKP(block_ptr)), PACK(size, 0));
         block_ptr = PREV_BLKP(block_ptr);
     }
-	
+	printf(" end of coalesce before free_block(block_ptr \n");
 	free_block(block_ptr);
 	
     return block_ptr;
