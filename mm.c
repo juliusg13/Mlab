@@ -72,15 +72,15 @@ team_t team = {
 
 #define ALIGN(size) (((size_t)(size) + 7) & ~0x7)
 
-#define PRE(p_block) ((void *)(p_block - DSIZE)) //Predecessor of BP
-#define SUC(p_block) ((void *)(p_block + DSIZE)) //pointer to successor of BP
+#define PRE(bp) ((void *)(bp)) 				//Predecessor of BP
+#define SUC(bp) ((void *)(bp + WSIZE)) 		//pointer to successor of BP
 
 /* $end mallocmacros */
 
 /* Global variables */
 static char *heap_listp;  /* pointer to first block */  
 static char *mp_freelist;
-static int m_freecount;
+static int 	m_freecount;
 /* function prototypes for internal helper routines */
 static void *extend_heap(size_t words);
 static void place(void *bp, size_t asize);
@@ -91,24 +91,36 @@ static void checkblock(void *bp);
 
 /* 
  * mm_init - Initialize the memory manager 
+ptr: f6a10008
+ptr: f6a10008
+ptr: f6a10008
+ptr: f6a10008
+ptr: f6a10010
+
  */
 /* $begin mminit */
 int mm_init(void) 
 {
     /* create the initial empty heap */
-    if ((heap_listp = mem_sbrk(4*WSIZE)) == NULL)
-        return -1;
+    if ((heap_listp = mem_sbrk(4*WSIZE)) == NULL) return -1;
+	printf("Init - Begin\n");
+	printf("heap list 1: %x\n", heap_listp);
+	printf("Begin heap: %x\n", mem_heap_lo());
+	printf("End heap: %x\n", mem_heap_hi());
     PUT(heap_listp, 0);                        /* alignment padding */
     PUT(heap_listp+WSIZE, PACK(OVERHEAD, 1));  /* prologue header */ 
     PUT(heap_listp+DSIZE, PACK(OVERHEAD, 1));  /* prologue footer */ 
     PUT(heap_listp+WSIZE+DSIZE, PACK(0, 1));   /* epilogue header */
     heap_listp += DSIZE;
+	printf("heap list 2: %x\n", heap_listp);
+	printf("Begin heap: %x\n", mem_heap_lo());
+	printf("End heap: %x\n", mem_heap_hi());
+	printf("Init - End\n");
     m_freelist = heap_listp;
     freecount = 0;
-
+	
     /* Extend the empty heap with a free block of CHUNKSIZE bytes */
-    if (extend_heap(CHUNKSIZE/WSIZE) == NULL)
-        return -1;
+    if (extend_heap(CHUNKSIZE/WSIZE) == NULL) return -1;
     return 0;
 }
 /* $end mminit */
