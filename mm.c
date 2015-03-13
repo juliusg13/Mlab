@@ -79,7 +79,7 @@ team_t team = {
 
 /* Global variables */
 static char *p_heap_list;  /* pointer to first block */  
-static char *mp_freelist;
+static char *mp_firstfreeblock;
 static int 	m_freecount;
 /* function prototypes for internal helper routines */
 static void *extend_heap(size_t words);
@@ -109,7 +109,7 @@ int mm_init(void)
     PUT(p_heap_list+DSIZE, PACK(OVERHEAD, 1));  /* prologue footer */ 
     PUT(p_heap_list+WSIZE+DSIZE, PACK(0, 1));   /* epilogue header */
     p_heap_list += DSIZE;
-    mp_freelist = p_heap_list;
+    mp_firstfreeblock = p_heap_list;
     m_freecount = 0;
 	
     /* Extend the empty heap with a free block of CHUNKSIZE bytes */
@@ -379,4 +379,57 @@ static void checkblock(void *block_ptr)
         printf("Error: header does not match footer\n");
 	}
 }
+
+static void free_block(void * block_ptr)
+{
+	m_freecount += 1;
+	
+	if ((mp_firstfreeblock == p_heap_list) || mp_firstfreeblock == NULL)
+	{
+		mp_firstfreeblock = block_ptr;
+		PUT(SUC(block_ptr), (int)NULL);
+		PUT(PRE(block_ptr), (int)NULL);
+		return;
+	}
+	
+	PUT(SUC(block_ptr), GET(mp_firstfreeblock));
+	PUT(PRE(block_ptr), (int)NULL);
+	PUT(PRE(mp_firstfreeblock), GET(block_ptr));
+	mp_firstfreeblock = block_ptr;	
+}
+
+static void allocate_block(void * block_ptr)
+{
+	m_freecount -= 1;
+	
+	// If freelist is 1 (we already lowered the count)
+	if (m_freecount == 0)
+	{
+		PUT(SUC(block_ptr), (int)NULL);
+		PUT(PRE(block_ptr), (int)NULL);
+		mp_firstfreeblock = NULL;
+		return;
+	}
+	
+	void* block_prev_ptr = GET(PRE(block_ptr));
+	
+	if (SUC(block_ptr) == NULL)
+	{
+		PUT(SUC(block_ptr), (int)NULL);
+		PUT(PRE(block_ptr), (int)NULL);
+		PUT(SUC(block_prev_ptr), (int)NULL);
+		return;
+	}
+	
+	void* block_next_ptr = GET(SUC(block_ptr));
+	PUT(SUC(block_prev_ptr), GET(block_next_ptr));
+	PUT(PRE(block_next_ptr), GET(block_prev_ptr));
+	PUT(SUC(block_ptr), (int)NULL);	
+	PUT(PRE(block_ptr), (int)NULL);	
+	return;
+}
+
+
+
+
 
