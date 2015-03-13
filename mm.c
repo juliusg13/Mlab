@@ -116,8 +116,8 @@ int mm_init(void)
 	printf("Begin heap: %x\n", mem_heap_lo());
 	printf("End heap: %x\n", mem_heap_hi());
 	printf("Init - End\n");
-    m_freelist = heap_listp;
-    freecount = 0;
+    mp_freelist = heap_listp;
+    m_freecount = 0;
 	
     /* Extend the empty heap with a free block of CHUNKSIZE bytes */
     if (extend_heap(CHUNKSIZE/WSIZE) == NULL) return -1;
