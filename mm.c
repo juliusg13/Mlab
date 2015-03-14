@@ -97,7 +97,7 @@ team_t team = {
 static char *p_heap_list;  /* pointer to first block */  
 static char *mp_firstfreeblock;
 static int 	m_freecount;
-static char *mp_lastfreeblock;
+
 /* function prototypes for internal helper routines */
 static void *extend_heap(size_t words);
 static void place(void *block_ptr, size_t asize);
@@ -342,18 +342,16 @@ static void *find_fit(size_t asize)
 
     for (block_ptr = mp_firstfreeblock; m_freecount >= 0; block_ptr = (SUCC(block_ptr))) 
     {
-		if (block_ptr == NULL)
-		{
-			return NULL;
-		}
+	if (block_ptr == NULL)
+	{
+		return NULL;
+	}
         if (!GET_ALLOC(HDRP(block_ptr)) && (asize <= GET_SIZE(HDRP(block_ptr)))) 
-		{
+	{
             return block_ptr;
         }
-//	block_ptr = SUCC(block_ptr);
-    }
-// printf("last findfit \n");
 
+    }
     return NULL; /* no fit */
 }
 
@@ -367,29 +365,22 @@ static void *coalesce(void *block_ptr)
     size_t size = GET_SIZE(HDRP(block_ptr));
 
     if (prev_alloc && next_alloc) 					/* Case 1 */
-	{
-//	printf("case 1 \n");
+    {
 	free_block(block_ptr);
-// printf("last coal \n");
-
         return block_ptr;
     }
 
     if (prev_alloc && !next_alloc) 			 /* Case 2 */
-	{
-//		printf("case 2 \n");
-		allocate_block(NEXT_BLKP(block_ptr));
-
+    {
+	allocate_block(NEXT_BLKP(block_ptr));
         size += GET_SIZE(HDRP(NEXT_BLKP(block_ptr)));
         PUT(HDRP(block_ptr), PACK(size, 0));
         PUT(FTRP(block_ptr), PACK(size,0));
     }
 
     else if (!prev_alloc && next_alloc)				 /* Case 3 */
-	{     
-//		printf("case 3 \n");
-		allocate_block(PREV_BLKP(block_ptr));
-
+    {     
+	allocate_block(PREV_BLKP(block_ptr));
         size += GET_SIZE(HDRP(PREV_BLKP(block_ptr)));
         PUT(FTRP(block_ptr), PACK(size, 0));
         PUT(HDRP(PREV_BLKP(block_ptr)), PACK(size, 0));
@@ -398,18 +389,15 @@ static void *coalesce(void *block_ptr)
 
     else 											/* Case 4 */
 	{   
-//		printf("case 4 \n");
-		allocate_block(NEXT_BLKP(block_ptr));
-		allocate_block(PREV_BLKP(block_ptr));
-		
+
+	allocate_block(NEXT_BLKP(block_ptr));
+	allocate_block(PREV_BLKP(block_ptr));
         size += GET_SIZE(HDRP(PREV_BLKP(block_ptr))) + GET_SIZE(FTRP(NEXT_BLKP(block_ptr)));
         PUT(HDRP(PREV_BLKP(block_ptr)), PACK(size, 0));
         PUT(FTRP(NEXT_BLKP(block_ptr)), PACK(size, 0));
         block_ptr = PREV_BLKP(block_ptr);
     }
-//	printf(" end of coalesce before free_block(block_ptr \n");
 	free_block(block_ptr);
-// printf("last coal \n");
 
     return block_ptr;
 }
@@ -423,7 +411,7 @@ static void printblock(void *block_ptr)
     halloc = GET_ALLOC(HDRP(block_ptr));  
     fsize = GET_SIZE(FTRP(block_ptr));
     falloc = GET_ALLOC(FTRP(block_ptr));  
-    
+   
     if (hsize == 0) 
 	{
         printf("%p: EOL\n", block_ptr);
@@ -447,95 +435,16 @@ static void checkblock(void *block_ptr)
 	}
 }
 
-/*static void free_block(void * block_ptr)
-{
-	m_freecount += 1;
 
-	if ((mp_firstfreeblock == p_heap_list) || mp_firstfreeblock == NULL)
-	{
-		mp_firstfreeblock = block_ptr;
-//		PUT(SUC_PTR(block_ptr), (int)NULL);
-//		PUT(PRE_PTR(block_ptr), (int)NULL);
-		PREV(block_ptr) = NULL;
-		SUCC(block_ptr) = NULL;
-		mp_lastfreeblock = block_ptr;
-		return;
-	}
-//	PUT(SUC_PTR(mp_lastfreeblock), PREV(*block_ptr));
-//	PUT(PRE_PTR(block_ptr), SUCC(*mp_lastfreeblock));
-//	SUCC(mp_lastfreeblock) = PREV(block_ptr);  
-//	PREV(block_ptr) = SUCC(mp_lastfreeblock);
-
-//	mp_lastfreeblock = (block_ptr);
-
-/*	PUT(SUC(block_ptr), GET(mp_firstfreeblock));
-	PUT(PRE(block_ptr), (int)NULL);
-	PUT(PRE(mp_firstfreeblock), GET(block_ptr));
-	mp_firstfreeblock = block_ptr;	
-*/
-/*
-	SUCC(block_ptr) = mp_firstfreeblock;
-	PREV(block_ptr) = NULL;
-	PREV(mp_firstfreeblock) = PREV(block_ptr);
-	mp_firstfreeblock = block_ptr;
-}
-
-static void allocate_block(void * block_ptr)
-{
-	m_freecount -= 1;
-
-	// If freelist is 1 (we already lowered the count)
-	if (m_freecount == 0)
-	{
-//		PUT(SUC_PTR(block_ptr), (int)NULL);
-//		PUT(PRE_PTR(block_ptr), (int)NULL);
-		SUCC(block_ptr) = NULL;
-		PREV(block_ptr) = NULL;
-		mp_firstfreeblock = NULL;
-		return;
-	}
-
-	void* prevp = PREV(block_ptr);
-
-	if (SUCC(block_ptr) == NULL)
-	{
-//		PUT(SUC_PTR(block_ptr), (int)NULL);
-//		PUT(PRE_PTR(block_ptr), (int)NULL);
-//		PUT(SUC_PTR(block_prev_ptr), (int)NULL);
-
-		SUCC(block_ptr) = NULL;
-		PREV(block_ptr) = NULL;
-		SUCC(prevp) = NULL;
-
-		return;
-	}
-
-//	void* block_next_ptr = SUCC(block_ptr);
-//	PUT(SUC_PTR(block_prev_ptr), SUCC(block_ptr));
-//	PUT(PRE_PTR(block_next_ptr), SUCC(block_ptr));
-//	PUT(SUC_PTR(block_ptr), (int)NULL);
-//	PUT(PRE_PTR(block_ptr), (int)NULL);
-	void* nextp = SUCC(block_ptr);
-	SUCC(prevp) = SUCC(block_ptr);
-	PREV(nextp) = SUCC(block_ptr);
-	SUCC(block_ptr) = NULL;
-	PREV(block_ptr) = NULL;
-	return;
-}
-*/
 static void printfree()
 {
     void *block_ptr;
-//    int i;
-//    for (block_ptr = mp_firstfreeblock; m_freecount >= 0; block_ptr = (SUC(block_ptr)))
-// for (block_ptr = mp_firstfreeblock; GET_SIZE(HDRP(block_ptr)) > 0; block_ptr = SUC(block_ptr))
-//block_ptr = mp_firstfreeblock;
- for (block_ptr = p_heap_list; GET_SIZE(HDRP(block_ptr)) > 0; block_ptr = NEXT_BLKP(block_ptr))
-        {
-		 size_t next_alloc = GET_ALLOC(HDRP((block_ptr)));
-		if(next_alloc == 0) printblock(block_ptr);
-		//block_ptr = SUC(block_ptr);
-	}
+    for (block_ptr = p_heap_list; GET_SIZE(HDRP(block_ptr)) > 0; block_ptr = NEXT_BLKP(block_ptr))
+    {
+	size_t next_alloc = GET_ALLOC(HDRP((block_ptr)));
+	if(next_alloc == 0) printblock(block_ptr);
+
+    }
 }
 
 
