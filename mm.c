@@ -1,3 +1,21 @@
+/*
+ * mm-naive.c - The fastest, least memory-efficient malloc package.
+ *
+ * In my solution I plan to use mm-firstfit.c that is given and work my way with it. I will use LIFO linked list that goes both ways. My variable
+        heap_free is the same as heap_listp but points to the first piece of the free blocks. When a block is free'd it will call the coalesce function
+        which then will check where that block was, depending on where in the list was it will take different measures for example if its the first
+        block already coalesce wont change any pointers, but if the block is in the middle I will put bp at the start, BP-1 will point to BP+1,
+        bp+1->reverse will point to BP-1. Having BP as the first block in the LIFO list pointing to the old header of the list. Oldheader->reverse
+        points to BP now. With only pointing to the free blocks I am hoping to traverse the linked list much faster and allocating memory much faster.
+ *
+ */
+
+
+// EXPLICIT LIST LIFO
+
+
+
+
 /* 
  * mm-implicit.c -  Simple allocator based on implicit free lists, 
  *                  first fit placement, and boundary tag coalescing. 
@@ -41,13 +59,14 @@
 * struct that follows.
 *
 * === User information ===
-* Team:Fighting_Mongoose
+* Group:Fighting_Mongoose
  * User 1:Juliusg13
- * SSN: 2801922799
+ * SSN:2801922799
 * User 2:
  * SSN: X
 * === End User Information ===
 ********************************************************/
+
 team_t team = {
     "Fighting_Mongoose",
     "juliusg13", "2801922799",
