@@ -35,12 +35,25 @@
 #include "memlib.h"
 
 /* Team structure */
+/*********************************************************
+* NOTE TO STUDENTS: Before you do anything else, please
+* provide your team information in below _AND_ in the
+* struct that follows.
+*
+* === User information ===
+* Team:Fighting_Mongoose
+ * User 1:Juliusg13
+ * SSN: 2801922799
+* User 2:
+ * SSN: X
+* === End User Information ===
+********************************************************/
 team_t team = {
-    "implicit first fit", 
-    "Dave OHallaron", "droh",
+    "Fighting_Mongoose",
+    "juliusg13", "2801922799",
     "", "",
     "", ""
-}; 
+};
 
 /* $begin mallocmacros */
 /* Basic constants and macros */
@@ -72,8 +85,11 @@ team_t team = {
 
 #define ALIGN(size) (((size_t)(size) + 7) & ~0x7)
 
-#define PRE(block_ptr) ((void *)(block_ptr)) 				//Predecessor of BP
-#define SUC(block_ptr) ((void *)(block_ptr + WSIZE)) 		//pointer to successor of BP
+#define PRE_PTR(block_ptr) ((void *)(block_ptr)) 				//Predecessor of BP
+#define SUC_PTR(block_ptr) ((void *)(block_ptr + WSIZE)) 		//pointer to successor of BP
+
+#define PREV(block_ptr) (*(void **)(block_ptr))
+#define SUCC(block_ptr) (*(void **)(SUC_PTR(block_ptr)))
 
 /* $end mallocmacros */
 
@@ -81,6 +97,7 @@ team_t team = {
 static char *p_heap_list;  /* pointer to first block */  
 static char *mp_firstfreeblock;
 static int 	m_freecount;
+static char *mp_lastfreeblock;
 /* function prototypes for internal helper routines */
 static void *extend_heap(size_t words);
 static void place(void *block_ptr, size_t asize);
@@ -116,6 +133,13 @@ int mm_init(void)
 	
     /* Extend the empty heap with a free block of CHUNKSIZE bytes */
     if (extend_heap(CHUNKSIZE/WSIZE) == NULL) return -1;
+
+//    PUT((SUCC(mp_firstfreeblock)+WSIZE), (int)NULL);
+//    PUT((PREV(mp_firstfreeblock)+WSIZE), (int)NULL);
+    SUCC(mp_firstfreeblock + WSIZE) = NULL;
+    PREV(mp_firstfreeblock + WSIZE) = NULL;
+
+
     return 0;
 }
 /* $end mminit */
@@ -129,36 +153,41 @@ void *mm_malloc(size_t size)
     size_t asize;      /* adjusted block size */
     size_t extendsize; /* amount to extend heap if no fit */
     char *block_ptr;      
-
+//printf("enter malloc \n");
     /* Ignore spurious requests */
     if (size <= 0) return NULL;
 
     /* Adjust block size to include overhead and alignment reqs. */
     if (size <= DSIZE)
 	{
-        asize = DSIZE + OVERHEAD;
+       		 asize = DSIZE + OVERHEAD;
 	}
     else
 	{
-        asize = DSIZE * ((size + (OVERHEAD) + (DSIZE-1)) / DSIZE);
+	        asize = DSIZE * ((size + (OVERHEAD) + (DSIZE-1)) / DSIZE);
 	}
     
     /* Search the free list for a fit */
 	block_ptr = find_fit(asize);
     if (block_ptr != NULL) 
 	{
+
         place(block_ptr, asize);
+
         return block_ptr;
     }
 
     /* No fit found. Get more memory and place the block */
     extendsize = MAX(asize,CHUNKSIZE);
-	block_ptr = extend_heap(extendsize/WSIZE);
+    block_ptr = extend_heap(extendsize/WSIZE);
     if (block_ptr == NULL)
-	{
+    {
         return NULL;
-	}
+    }
+//printf("malloc calling from extend heap \n");
     place(block_ptr, asize);
+// printf("last malloc \n");
+
     return block_ptr;
 } 
 /* $end mmmalloc */
@@ -173,6 +202,8 @@ void mm_free(void *block_ptr)
 
     PUT(HDRP(block_ptr), PACK(size, 0));
     PUT(FTRP(block_ptr), PACK(size, 0));
+
+
     coalesce(block_ptr);
 }
 
@@ -227,7 +258,7 @@ void mm_checkheap(int verbose)
 		}
         checkblock(block_ptr);
     }
-     
+ 
     if (verbose)
 	{
         printblock(block_ptr);
@@ -248,7 +279,7 @@ static void *extend_heap(size_t words)
 {
     char *block_ptr;
     size_t size;
-        
+
     /* Allocate an even number of words to maintain alignment */
     size = (words % 2) ? (words+1) * WSIZE : words * WSIZE;
     if ((block_ptr = mem_sbrk(size)) == (void *)-1) 
@@ -260,11 +291,11 @@ static void *extend_heap(size_t words)
     PUT(HDRP(block_ptr), PACK(size, 0));         /* free block header */
     PUT(FTRP(block_ptr), PACK(size, 0));         /* free block footer */
     PUT(HDRP(NEXT_BLKP(block_ptr)), PACK(0, 1)); /* new epilogue header */
-    printblock(block_ptr);
-    printf("%d \n", size);
-    /* Coalesce if the previous block was free */
+  /* Coalesce if the previous block was free */
+
+
     return coalesce(block_ptr);
-//	return block_ptr;
+
 }
 /* $end mmextendheap */
 
@@ -277,8 +308,8 @@ static void *extend_heap(size_t words)
 static void place(void *block_ptr, size_t asize)
 /* $end mmplace-proto */
 {
-    size_t csize = GET_SIZE(HDRP(block_ptr));   
-	
+    size_t csize = GET_SIZE(HDRP(block_ptr));
+
 	allocate_block(block_ptr);
 
     if ((csize - asize) >= (DSIZE + OVERHEAD)) 
@@ -289,12 +320,15 @@ static void place(void *block_ptr, size_t asize)
         PUT(HDRP(block_ptr), PACK(csize-asize, 0));
         PUT(FTRP(block_ptr), PACK(csize-asize, 0));
 		free_block(block_ptr);
+
     }
     else 
 	{ 
         PUT(HDRP(block_ptr), PACK(csize, 1));
         PUT(FTRP(block_ptr), PACK(csize, 1));
     }
+ //printf("last place \n");
+
 }
 /* $end mmplace */
 
@@ -303,14 +337,11 @@ static void place(void *block_ptr, size_t asize)
  */
 static void *find_fit(size_t asize)
 {
-	
-
     /* first fit search */
     void *block_ptr;
 
-    for (block_ptr = mp_firstfreeblock; m_freecount >= 0; block_ptr = SUC(block_ptr)) 
-// for (block_ptr = mp_firstfreeblock; GET_SIZE(HDRP(block_ptr)) > 0; block_ptr = SUC(block_ptr)) 
-	{
+    for (block_ptr = mp_firstfreeblock; m_freecount >= 0; block_ptr = (SUCC(block_ptr))) 
+    {
 		if (block_ptr == NULL)
 		{
 			return NULL;
@@ -319,7 +350,10 @@ static void *find_fit(size_t asize)
 		{
             return block_ptr;
         }
+//	block_ptr = SUCC(block_ptr);
     }
+// printf("last findfit \n");
+
     return NULL; /* no fit */
 }
 
@@ -334,15 +368,18 @@ static void *coalesce(void *block_ptr)
 
     if (prev_alloc && next_alloc) 					/* Case 1 */
 	{
-	printf("case 1 \n");
+//	printf("case 1 \n");
+	free_block(block_ptr);
+// printf("last coal \n");
+
         return block_ptr;
     }
-	
+
     if (prev_alloc && !next_alloc) 			 /* Case 2 */
 	{
-		printf("case 2 \n");
+//		printf("case 2 \n");
 		allocate_block(NEXT_BLKP(block_ptr));
-		
+
         size += GET_SIZE(HDRP(NEXT_BLKP(block_ptr)));
         PUT(HDRP(block_ptr), PACK(size, 0));
         PUT(FTRP(block_ptr), PACK(size,0));
@@ -350,9 +387,9 @@ static void *coalesce(void *block_ptr)
 
     else if (!prev_alloc && next_alloc)				 /* Case 3 */
 	{     
-		printf("case 3 \n");
+//		printf("case 3 \n");
 		allocate_block(PREV_BLKP(block_ptr));
-		
+
         size += GET_SIZE(HDRP(PREV_BLKP(block_ptr)));
         PUT(FTRP(block_ptr), PACK(size, 0));
         PUT(HDRP(PREV_BLKP(block_ptr)), PACK(size, 0));
@@ -361,7 +398,7 @@ static void *coalesce(void *block_ptr)
 
     else 											/* Case 4 */
 	{   
-		printf("case 4 \n");
+//		printf("case 4 \n");
 		allocate_block(NEXT_BLKP(block_ptr));
 		allocate_block(PREV_BLKP(block_ptr));
 		
@@ -370,9 +407,10 @@ static void *coalesce(void *block_ptr)
         PUT(FTRP(NEXT_BLKP(block_ptr)), PACK(size, 0));
         block_ptr = PREV_BLKP(block_ptr);
     }
-	printf(" end of coalesce before free_block(block_ptr \n");
+//	printf(" end of coalesce before free_block(block_ptr \n");
 	free_block(block_ptr);
-	
+// printf("last coal \n");
+
     return block_ptr;
 }
 
@@ -409,56 +447,152 @@ static void checkblock(void *block_ptr)
 	}
 }
 
-static void free_block(void * block_ptr)
+/*static void free_block(void * block_ptr)
 {
 	m_freecount += 1;
-	
+
 	if ((mp_firstfreeblock == p_heap_list) || mp_firstfreeblock == NULL)
 	{
 		mp_firstfreeblock = block_ptr;
-		PUT(SUC(block_ptr), (int)NULL);
-		PUT(PRE(block_ptr), (int)NULL);
+//		PUT(SUC_PTR(block_ptr), (int)NULL);
+//		PUT(PRE_PTR(block_ptr), (int)NULL);
+		PREV(block_ptr) = NULL;
+		SUCC(block_ptr) = NULL;
+		mp_lastfreeblock = block_ptr;
 		return;
 	}
-	
-	PUT(SUC(block_ptr), GET(mp_firstfreeblock));
+//	PUT(SUC_PTR(mp_lastfreeblock), PREV(*block_ptr));
+//	PUT(PRE_PTR(block_ptr), SUCC(*mp_lastfreeblock));
+//	SUCC(mp_lastfreeblock) = PREV(block_ptr);  
+//	PREV(block_ptr) = SUCC(mp_lastfreeblock);
+
+//	mp_lastfreeblock = (block_ptr);
+
+/*	PUT(SUC(block_ptr), GET(mp_firstfreeblock));
 	PUT(PRE(block_ptr), (int)NULL);
 	PUT(PRE(mp_firstfreeblock), GET(block_ptr));
 	mp_firstfreeblock = block_ptr;	
+*/
+/*
+	SUCC(block_ptr) = mp_firstfreeblock;
+	PREV(block_ptr) = NULL;
+	PREV(mp_firstfreeblock) = PREV(block_ptr);
+	mp_firstfreeblock = block_ptr;
 }
 
 static void allocate_block(void * block_ptr)
 {
 	m_freecount -= 1;
-	
+
 	// If freelist is 1 (we already lowered the count)
 	if (m_freecount == 0)
 	{
-		PUT(SUC(block_ptr), (int)NULL);
-		PUT(PRE(block_ptr), (int)NULL);
+//		PUT(SUC_PTR(block_ptr), (int)NULL);
+//		PUT(PRE_PTR(block_ptr), (int)NULL);
+		SUCC(block_ptr) = NULL;
+		PREV(block_ptr) = NULL;
 		mp_firstfreeblock = NULL;
 		return;
 	}
-	
-	void* block_prev_ptr = PRE(block_ptr);
-	
-	if (SUC(block_ptr) == NULL)
+
+	void* prevp = PREV(block_ptr);
+
+	if (SUCC(block_ptr) == NULL)
 	{
-		PUT(SUC(block_ptr), (int)NULL);
-		PUT(PRE(block_ptr), (int)NULL);
-		PUT(SUC(block_prev_ptr), (int)NULL);
+//		PUT(SUC_PTR(block_ptr), (int)NULL);
+//		PUT(PRE_PTR(block_ptr), (int)NULL);
+//		PUT(SUC_PTR(block_prev_ptr), (int)NULL);
+
+		SUCC(block_ptr) = NULL;
+		PREV(block_ptr) = NULL;
+		SUCC(prevp) = NULL;
+
 		return;
 	}
-	
-	void* block_next_ptr = SUC(block_ptr);
-	PUT(SUC(block_prev_ptr), GET(block_next_ptr));
-	PUT(PRE(block_next_ptr), GET(block_prev_ptr));
-	PUT(SUC(block_ptr), (int)NULL);	
-	PUT(PRE(block_ptr), (int)NULL);	
+
+//	void* block_next_ptr = SUCC(block_ptr);
+//	PUT(SUC_PTR(block_prev_ptr), SUCC(block_ptr));
+//	PUT(PRE_PTR(block_next_ptr), SUCC(block_ptr));
+//	PUT(SUC_PTR(block_ptr), (int)NULL);
+//	PUT(PRE_PTR(block_ptr), (int)NULL);
+	void* nextp = SUCC(block_ptr);
+	SUCC(prevp) = SUCC(block_ptr);
+	PREV(nextp) = SUCC(block_ptr);
+	SUCC(block_ptr) = NULL;
+	PREV(block_ptr) = NULL;
 	return;
+}
+*/
+static void printfree()
+{
+    void *block_ptr;
+//    int i;
+//    for (block_ptr = mp_firstfreeblock; m_freecount >= 0; block_ptr = (SUC(block_ptr)))
+// for (block_ptr = mp_firstfreeblock; GET_SIZE(HDRP(block_ptr)) > 0; block_ptr = SUC(block_ptr))
+//block_ptr = mp_firstfreeblock;
+ for (block_ptr = p_heap_list; GET_SIZE(HDRP(block_ptr)) > 0; block_ptr = NEXT_BLKP(block_ptr))
+        {
+		 size_t next_alloc = GET_ALLOC(HDRP((block_ptr)));
+		if(next_alloc == 0) printblock(block_ptr);
+		//block_ptr = SUC(block_ptr);
+	}
 }
 
 
+static void free_block(void * block_ptr)
+{
+	m_freecount += 1;
+
+	if ((mp_firstfreeblock == p_heap_list) || mp_firstfreeblock == NULL){
+		SUCC(block_ptr) = NULL;
+		PREV(block_ptr) = NULL;
+		mp_firstfreeblock = block_ptr;
+		return;
+	}
+	SUCC(block_ptr) = mp_firstfreeblock;
+	PREV(block_ptr) = NULL;
+
+	PREV(mp_firstfreeblock) = block_ptr;
+	mp_firstfreeblock = block_ptr;
+}
+
+static void allocate_block(void * block_ptr)
+{
+	m_freecount -= 1;
+
+	if((m_freecount == 0)){ //already lowered free list // as in if only one free block.
+		PREV(block_ptr) = NULL;
+		SUCC(block_ptr) = NULL;
+		mp_firstfreeblock = NULL;
+		return;
+	}
+	if(m_freecount == -1){
+		printf("SHOULD NOT HAPPEN:: ERROR:: ERROR \n");
+		m_freecount = 0;
+		return;
+	}
+	void* pp = PREV(block_ptr);
+	void* np = SUCC(block_ptr);
+
+	if(np == NULL){
+		SUCC(pp) = NULL;
+
+		SUCC(block_ptr) = NULL;
+		PREV(block_ptr) = NULL;
+		return;
+	}
+	else if(pp == NULL){
+		mp_firstfreeblock = SUCC(block_ptr);
+		PREV(mp_firstfreeblock) = NULL;
+		PREV(block_ptr) = NULL;
+		SUCC(block_ptr) = NULL;
+		return;
+	}
+
+	SUCC(pp) = np;
+	PREV(np) = pp;
 
 
-
+	SUCC(block_ptr) = NULL;
+	PREV(block_ptr) = NULL;
+}
